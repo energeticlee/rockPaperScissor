@@ -4,17 +4,17 @@ const rl = readline.createInterface({
   output: process.stdout,
 });
 
-const baseWinLogic = {
-  rock: ["scissor"],
-  paper: ["rock"],
-  scissor: ["paper"],
-};
+const delay = () => new Promise((cb) => setTimeout(cb, 500));
 
 class Player {
-  constructor(name, baseWinLogic, move) {
+  constructor(name, move) {
     this.name = name;
-    this.baseWinLogic = baseWinLogic;
     this.move = move;
+    this.baseWinLogic = {
+      rock: ["scissor"],
+      paper: ["rock"],
+      scissor: ["paper"],
+    };
   }
 
   compare = (oppMove, myMove = this.move, baseWinLogic = this.baseWinLogic) => {
@@ -22,71 +22,102 @@ class Player {
     else if (baseWinLogic[oppMove].includes(myMove)) return "Computer Win :(";
     else return "Congrats! You win!";
   };
+
+  startGame = () => {
+    rl.question(`Hi! What Is Your Name: `, async (answer) => {
+      await delay();
+      console.log(`Hey ${answer}! Rock, Paper, or Scissor (or MORE!)`);
+      await delay();
+      this.gameStageMenu(answer);
+    });
+  };
+
+  gameStageMenu = () => {
+    rl.question(
+      `Would you like to play or add a new move? ["play", "add"] `,
+      async (cb) => {
+        await delay();
+        if (cb.toLowerCase() === "play") {
+          console.log("Let's PLAY!");
+          await delay();
+          this.gameStageFight();
+        } else if (cb.toLowerCase() === "add") {
+          this.gameStageAdd();
+        } else this.handleError(this.gameStageMenu);
+      }
+    );
+  };
+
+  gameStageAdd = () => {
+    rl.question("Let's give this item a name! ", async (cb) => {
+      if (this.moveExist(cb)) this.handleError(this.gameStageAdd);
+      else {
+        await delay();
+        rl.question(`Noise! What can ${cb} beat? `, async (cb2) => {
+          if (!this.moveExist(cb2)) this.handleError(this.gameStageAdd);
+          else {
+            await delay();
+            rl.question(`Noise! What can beat ${cb}? `, async (cb3) => {
+              if (!this.moveExist(cb3) || cb3 === cb2)
+                this.handleError(this.gameStageAdd);
+              else {
+                await delay();
+                this.baseWinLogic[cb].push(cb2);
+                this.baseWinLogic[cb3].push(cb);
+                this.gameStageMenu();
+              }
+            });
+          }
+        });
+      }
+    });
+  };
+
+  gameStageFight = () => {
+    const keyOption = Object.keys(this.baseWinLogic);
+    rl.question(`Select One: ${keyOption} `, async (cb) => {
+      await delay();
+      if (!this.moveExist(cb)) this.handleError(this.gameStageFight);
+      else {
+        console.log(`You pick ${cb.toUpperCase()}! `);
+        await delay();
+        this.move = cb;
+        const comPick = keyOption[Math.floor(Math.random() * keyOption.length)];
+        console.log(`Computer pick ${comPick.toUpperCase()}! `);
+        await delay();
+        const result = this.compare(comPick.toLowerCase());
+        console.log(result);
+        await delay();
+        this.playAgain();
+      }
+    });
+  };
+
+  playAgain = () => {
+    rl.question(`Play Again? [Y | N] `, async (cb) => {
+      await delay();
+      if (cb.toLowerCase() === "y" || cb.toLowerCase() === "yes")
+        this.gameStageMenu();
+      if (cb.toLowerCase() === "n" || cb.toLowerCase() === "no") this.endGame();
+    });
+  };
+
+  endGame = () => {
+    console.log("BYE!");
+    process.stdin.unref();
+  };
+
+  moveExist = (move) => {
+    return Object.keys(this.baseWinLogic).includes(move);
+  };
+
+  handleError = async (func) => {
+    console.log("Invalid input, try again!");
+    await delay();
+    func();
+  };
 }
 
-const gameStageIntro = () => {
-  rl.question(`Hi! What Is Your Name: `, (answer) => {
-    console.log(`Hey ${answer}! Rock, Paper, or Scissor (or MORE!)`);
-    gameStageMenu(answer);
-  });
-};
-gameStageIntro();
+const newPlayer = new Player();
 
-const gameStageMenu = (name) => {
-  rl.question(
-    `Would you like to play or add a new move? ["play", "add"] `,
-    (cb) => {
-      if (cb.toLowerCase() === "play") {
-        const newPlayer = new Player(name, baseWinLogic);
-        console.log("Let's PLAY!");
-        gameStageFight(newPlayer);
-      } else if (cb.toLowerCase() === "add") {
-        gameStageAdd(name);
-      } else handleError(gameStageMenu);
-    }
-  );
-};
-
-const gameStageAdd = (name) => {
-  rl.question("Awesome! Give this item a name! ", (cb) => {
-    rl.question(`Noise! What can ${cb} beat? `, (cb2) => {
-      rl.question(`Noise! What can beat ${cb}? `, (cb3) => {
-        if (cb3 === cb2) handleError((name) => gameStageAdd(name));
-        baseWinLogic[cb].push(cb2);
-        baseWinLogic[cb3].push(cb);
-        gameStageMenu(name);
-      });
-    });
-  });
-};
-
-const gameStageFight = (newPlayer) => {
-  const keyOption = Object.keys(baseWinLogic);
-  rl.question(`Select One: ${keyOption} `, (cb) => {
-    console.log(`You pick ${cb.toUpperCase()}! `);
-    newPlayer.move = cb;
-    comPick = keyOption[Math.floor(Math.random() * keyOption.length)];
-    console.log(`Computer pick ${comPick.toUpperCase()}! `);
-    const result = newPlayer.compare(comPick.toLowerCase());
-    console.log(result);
-    playAgain();
-  });
-};
-
-const playAgain = () => {
-  rl.question(`Play Again? [Y | N] `, (cb) => {
-    if (cb.toLowerCase() === "y" || cb.toLowerCase() === "yes")
-      gameStageMenu(newPlayer.name);
-    if (cb.toLowerCase() === "n" || cb.toLowerCase() === "no") endGame();
-  });
-};
-
-const endGame = () => {
-  console.log("BYE!");
-  process.stdin.unref();
-};
-
-const handleError = (func) => {
-  console.log("Invalid input, try again!");
-  func();
-};
+module.exports = newPlayer;
